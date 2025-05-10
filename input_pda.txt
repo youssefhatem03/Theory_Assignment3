@@ -1,0 +1,32 @@
+1
+aabbcc
+aaabbbbccc
+aab
+aabbccc
+end
+2
+aaabb
+aaaaaabbbb
+aaabbb
+aaabbbbbb
+end
+3
+{ { } }
+{} { {{} {}} }
+{} { { }
+{{}
+end
+4
+aabbbc
+aabbbbbccc
+aabbbcc
+aaabbb
+end
+5
+abaabbaccc
+aaabbbccc
+aabaabbcc
+bbaabbcccc
+aac
+end
+
