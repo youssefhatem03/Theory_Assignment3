@@ -6,7 +6,7 @@ class TransitionKey {
     private char input;
     private char stackTop;
 
-    TransitionKey(int currentState, char input, char stackTop) {
+    public TransitionKey(int currentState, char input, char stackTop) {
         this.currentState = currentState;
         this.input = input;
         this.stackTop = stackTop;
@@ -32,7 +32,7 @@ class TransitionValue {
     private int nextState;
     private String stackPush;
 
-    TransitionValue(int nextState, String stackPush) {
+    public TransitionValue(int nextState, String stackPush) {
         this.nextState = nextState;
         this.stackPush = stackPush;
     }
@@ -47,26 +47,16 @@ class TransitionValue {
 }
 
 class TransitionFunction {
-    private Map<TransitionKey, List<TransitionValue>> transitions;
+    private Map<TransitionKey, List<TransitionValue>> transitions = new HashMap<>();
 
-    public TransitionFunction() {
-        this.transitions = new HashMap<>();
-    }
-
-    public void addTransition(int currentState, char input, char stackTop, int nextState, String stackPush) {
+    public void addTransition(int currentState, char input, char stackTop,
+                              int nextState, String stackPush) {
         TransitionKey key = new TransitionKey(currentState, input, stackTop);
-        TransitionValue value = new TransitionValue(nextState, stackPush);
-
-        if (!transitions.containsKey(key)) {
-            transitions.put(key, new ArrayList<>());
-        }
-        transitions.get(key).add(value);
+        transitions.computeIfAbsent(key, k -> new ArrayList<>()).add(new TransitionValue(nextState, stackPush));
     }
 
     public List<TransitionValue> getTransitions(int currentState, char input, char stackTop) {
-        TransitionKey key = new TransitionKey(currentState, input, stackTop);
-        List<TransitionValue> result = transitions.getOrDefault(key, new ArrayList<>());
-        return result;
+        return transitions.getOrDefault(new TransitionKey(currentState, input, stackTop), new ArrayList<>());
     }
 }
 
@@ -77,20 +67,9 @@ class PDAState {
 
     public PDAState(int state, Stack<Character> stack, int position) {
         this.state = state;
-        this.stack = stack;
+        this.stack = new Stack<>();
+        this.stack.addAll(stack);
         this.position = position;
-    }
-
-    public int getState() {
-        return state;
-    }
-
-    public Stack<Character> getStack() {
-        return stack;
-    }
-
-    public int getPosition() {
-        return position;
     }
 
     @Override
@@ -100,13 +79,17 @@ class PDAState {
         PDAState pdaState = (PDAState) o;
         return state == pdaState.state &&
                 position == pdaState.position &&
-                Objects.equals(stack, pdaState.stack);
+                stack.equals(pdaState.stack);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(state, stack, position);
     }
+
+    public int getState() { return state; }
+    public Stack<Character> getStack() { return stack; }
+    public int getPosition() { return position; }
 }
 
 public class PDAClass {
@@ -118,9 +101,9 @@ public class PDAClass {
     private ArrayList<Integer> finalStates;
     private char stackInitial;
 
-    PDAClass(ArrayList<Integer> states, ArrayList<Character> inputAlphabet,
-             ArrayList<Character> stackAlphabet, TransitionFunction transitionFunction,
-             int startState, ArrayList<Integer> finalStates, char stackInitial) {
+    public PDAClass(ArrayList<Integer> states, ArrayList<Character> inputAlphabet,
+                    ArrayList<Character> stackAlphabet, TransitionFunction transitionFunction,
+                    int startState, ArrayList<Integer> finalStates, char stackInitial) {
         this.states = states;
         this.inputAlphabet = inputAlphabet;
         this.stackAlphabet = stackAlphabet;
@@ -130,248 +113,218 @@ public class PDAClass {
         this.stackInitial = stackInitial;
     }
 
-    public boolean isAccepted(String s) {
-        // Start with initial state and stack
-        Stack<Character> initialStack = new Stack<>();
-        initialStack.push(stackInitial);
+    public boolean isAccepted(String input) {
+        Stack<Character> stack = new Stack<>();
+        stack.push(stackInitial);
 
-        // Use BFS to explore all possible execution paths
         Queue<PDAState> queue = new LinkedList<>();
         Set<PDAState> visited = new HashSet<>();
-
-        queue.add(new PDAState(startState, initialStack, 0));
+        queue.add(new PDAState(startState, stack, 0));
 
         while (!queue.isEmpty()) {
             PDAState current = queue.poll();
+            if (visited.contains(current)) continue;
+            visited.add(current);
 
             int currentState = current.getState();
             Stack<Character> currentStack = current.getStack();
-            int position = current.getPosition();
+            int pos = current.getPosition();
 
-            // If we've reached the end of the string
-            if (position == s.length()) {
-                // Check if current state is in finalStates (acceptance by final state)
-                if (finalStates.contains(currentState)) {
-                    return true;
-                }
-
-                // Try epsilon transitions at the end
-                processEpsilonTransitions(currentState, currentStack, position, queue, visited, s);
-            } else {
-                // Process the current input symbol
-                char currentInput = s.charAt(position);
-                processSymbolTransitions(currentState, currentInput, currentStack, position, queue, visited, s);
-
-                // Also try epsilon transitions
-                processEpsilonTransitions(currentState, currentStack, position, queue, visited, s);
+            // Check acceptance by final state
+            if (pos == input.length() && finalStates.contains(currentState)) {
+                return true;
             }
-        }
 
+            // Process transitions
+            processTransitions(currentState, currentStack, pos, input, queue, visited);
+        }
         return false;
     }
 
-    private void processSymbolTransitions(int currentState, char currentInput, Stack<Character> currentStack,
-                                          int position, Queue<PDAState> queue, Set<PDAState> visited, String s) {
-        // Check transitions with current input
-        if (!currentStack.isEmpty()) {
-            char stackTop = currentStack.peek();
-            List<TransitionValue> transitions = transitionFunction.getTransitions(currentState, currentInput, stackTop);
+    private void processTransitions(int currentState, Stack<Character> stack, int pos,
+                                    String input, Queue<PDAState> queue, Set<PDAState> visited) {
+        char stackTop = stack.isEmpty() ? 'e' : stack.peek();
+        char inputSymbol = (pos < input.length()) ? input.charAt(pos) : 'e';
 
-            for (TransitionValue transition : transitions) {
-                int nextState = transition.getNextState();
-                String stackPush = transition.getStackPush();
-
-                // Create a copy of the current stack
-                Stack<Character> newStack = cloneStack(currentStack);
-
-                // Pop the top element
-                newStack.pop();
-
-                // Push new elements to stack in reverse order
-                for (int i = stackPush.length() - 1; i >= 0; i--) {
-                    char c = stackPush.charAt(i);
-                    newStack.push(c);
-                }
-
-                PDAState nextPDAState = new PDAState(nextState, newStack, position + 1);
-                if (!visited.contains(nextPDAState)) {
-                    visited.add(nextPDAState);
-                    queue.add(nextPDAState);
-                }
-            }
+        // Process input transitions
+        if (pos < input.length()) {
+            processTransition(currentState, inputSymbol, stack, pos + 1, queue, visited);
         }
+
+        // Process epsilon transitions
+        processTransition(currentState, 'e', stack, pos, queue, visited);
     }
 
-    private void processEpsilonTransitions(int currentState, Stack<Character> currentStack,
-                                           int position, Queue<PDAState> queue, Set<PDAState> visited, String s) {
-        // Check for epsilon transitions
-        if (!currentStack.isEmpty()) {
-            char stackTop = currentStack.peek();
-            List<TransitionValue> epsilonTransitions = transitionFunction.getTransitions(currentState, 'ε', stackTop);
+    private void processTransition(int currentState, char inputSymbol, Stack<Character> stack,
+                                   int newPos, Queue<PDAState> queue, Set<PDAState> visited) {
+        char stackTop = stack.isEmpty() ? 'e' : stack.peek();
+        List<TransitionValue> transitions = transitionFunction.getTransitions(currentState, inputSymbol, stackTop);
 
-            for (TransitionValue transition : epsilonTransitions) {
-                int nextState = transition.getNextState();
-                String stackPush = transition.getStackPush();
+        for (TransitionValue transition : transitions) {
+            Stack<Character> newStack = new Stack<>();
+            newStack.addAll(stack);
 
-                // Create a copy of the current stack
-                Stack<Character> newStack = cloneStack(currentStack);
-
-                // Pop the top element
+            if (stackTop != 'e' && !newStack.isEmpty()) {
                 newStack.pop();
-
-                // Push new elements to stack in reverse order
-                for (int i = stackPush.length() - 1; i >= 0; i--) {
-                    char c = stackPush.charAt(i);
-                    newStack.push(c);
-                }
-
-                PDAState nextPDAState = new PDAState(nextState, newStack, position);
-                if (!visited.contains(nextPDAState)) {
-                    visited.add(nextPDAState);
-                    queue.add(nextPDAState);
-                }
             }
 
-            // Also check for epsilon input, epsilon stack transitions
-            List<TransitionValue> epsilonEpsilonTransitions = transitionFunction.getTransitions(currentState, 'ε', 'ε');
+            String pushStr = transition.getStackPush();
+            for (int i = pushStr.length() - 1; i >= 0; i--) {
+                char c = pushStr.charAt(i);
+                if (c != 'e') newStack.push(c);
+            }
 
-            for (TransitionValue transition : epsilonEpsilonTransitions) {
-                int nextState = transition.getNextState();
-                String stackPush = transition.getStackPush();
-
-                // Create a copy of the current stack
-                Stack<Character> newStack = cloneStack(currentStack);
-
-                // Push new elements to stack in reverse order
-                for (int i = stackPush.length() - 1; i >= 0; i--) {
-                    char c = stackPush.charAt(i);
-                    newStack.push(c);
-                }
-
-                PDAState nextPDAState = new PDAState(nextState, newStack, position);
-                if (!visited.contains(nextPDAState)) {
-                    visited.add(nextPDAState);
-                    queue.add(nextPDAState);
-                }
+            PDAState nextState = new PDAState(transition.getNextState(), newStack, newPos);
+            if (!visited.contains(nextState)) {
+                queue.add(nextState);
             }
         }
-    }
-
-    private Stack<Character> cloneStack(Stack<Character> stack) {
-        Stack<Character> temp = new Stack<>();
-        Stack<Character> result = new Stack<>();
-
-        // Pop all elements from the original stack and push to temp
-        for (char c : stack) {
-            temp.push(c);
-        }
-
-        // Pop all elements from temp and push to result
-        while (!temp.isEmpty()) {
-            result.push(temp.pop());
-        }
-
-        return result;
     }
 
     public void solveProblem(BufferedReader br, BufferedWriter bw) throws IOException {
         String line;
-        // Read problem number
-        String problemNum = br.readLine();
-
-        bw.write(problemNum);
-        bw.newLine();
-
-        // Process each input string until "end" is encountered
-        while (!(line = br.readLine()).equals("end")) {
-            boolean result = isAccepted(line);
-            bw.write(result ? "accepted" : "not accepted");
-            bw.newLine();
+        while ((line = br.readLine()) != null && !line.equals("end")) {
+            boolean result = isAccepted(line.trim());
+            bw.write(result ? "accepted\n" : "not accepted\n");
         }
-
-        // Write the problem separator
-        bw.write("x");
-        bw.newLine();
+        bw.write("x\n");
     }
 }
 
 
 
-// Problem 1: Language { a^n b^m c^n | n,m>=0 }
+// Problem 1: {a^n b^m c^n | n,m >= 0}
 class PDAProblem1 {
-    ArrayList<Integer> states = new ArrayList<>(Arrays.asList(0, 1, 2, 3));
-    ArrayList<Integer> finalStates = new ArrayList<>(Arrays.asList(3));
-    ArrayList<Character> inputAlphabet = new ArrayList<>(Arrays.asList('a', 'b', 'c'));
-    ArrayList<Character> stackAlphabet = new ArrayList<>(Arrays.asList('$', 'a'));
-    int startState = 0;
-    Character stackInitial = '$';
-    TransitionFunction transitionFunction = new TransitionFunction();
-    PDAClass pda;
-
     public PDAProblem1(BufferedReader br, BufferedWriter bw) throws IOException {
-        // State 0: Push 'a' onto stack for each 'a' read
-        transitionFunction.addTransition(0, 'a', '$', 0, "a$");
-        transitionFunction.addTransition(0, 'a', 'a', 0, "aa");
+        ArrayList<Integer> states = new ArrayList<>(Arrays.asList(0, 1, 2, 3));
+        ArrayList<Character> inputAlpha = new ArrayList<>(Arrays.asList('a', 'b', 'c'));
+        ArrayList<Character> stackAlpha = new ArrayList<>(Arrays.asList('$', 'A'));
+        ArrayList<Integer> finalStates = new ArrayList<>(Arrays.asList(3));
+        TransitionFunction tf = new TransitionFunction();
 
-        // Transition to state 1 on reading 'b'
-        transitionFunction.addTransition(0, 'b', '$', 1, "$");
-        transitionFunction.addTransition(0, 'b', 'a', 1, "a");
+        tf.addTransition(0, 'a', '$', 0, "A$");
+        tf.addTransition(0, 'a', 'A', 0, "AA");
+        tf.addTransition(0, 'e', '$', 1, "$");
+        tf.addTransition(0, 'e', 'A', 1, "A");
+        tf.addTransition(1, 'b', '$', 1, "$");
+        tf.addTransition(1, 'b', 'A', 1, "A");
+        tf.addTransition(1, 'c', 'A', 2, "");
+        tf.addTransition(2, 'c', 'A', 2, "");
+        tf.addTransition(2, 'e', '$', 3, "$");
 
-        // State 1: Skip 'b's
-        transitionFunction.addTransition(1, 'b', '$', 1, "$");
-        transitionFunction.addTransition(1, 'b', 'a', 1, "a");
-
-        // Transition to state 2 on reading 'c'
-        transitionFunction.addTransition(1, 'c', '$', 2, "$");
-        transitionFunction.addTransition(1, 'c', 'a', 2, "");
-
-        // State 2: Pop 'a' for each 'c' read
-        transitionFunction.addTransition(2, 'c', 'a', 2, "");
-
-        // Transition to state 3 when stack is empty
-        transitionFunction.addTransition(2, 'ε', '$', 3, "$");
-
-        // Special case for empty string
-        transitionFunction.addTransition(0, 'ε', '$', 3, "$");
-
-        pda = new PDAClass(states, inputAlphabet, stackAlphabet, transitionFunction, startState, finalStates, stackInitial);
+        PDAClass pda = new PDAClass(states, inputAlpha, stackAlpha, tf, 0, finalStates, '$');
         pda.solveProblem(br, bw);
     }
 }
 
-// Problem 2: Language {a^(3n) b^(2n) | n>=1}
+// Problem 2: {a^{3n} b^{2n} | n >= 1}
 class PDAProblem2 {
-    ArrayList<Integer> states = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4));
-    ArrayList<Integer> finalStates = new ArrayList<>(Arrays.asList(4));
-    ArrayList<Character> inputAlphabet = new ArrayList<>(Arrays.asList('a', 'b'));
-    ArrayList<Character> stackAlphabet = new ArrayList<>(Arrays.asList('$', 'X'));
-    int startState = 0;
-    Character stackInitial = '$';
-    TransitionFunction transitionFunction = new TransitionFunction();
-    PDAClass pda;
-
     public PDAProblem2(BufferedReader br, BufferedWriter bw) throws IOException {
-        // State 0: Push 'X' onto stack for every 3 'a's read
-        transitionFunction.addTransition(0, 'a', '$', 1, "$");
-        transitionFunction.addTransition(1, 'a', '$', 2, "$");
-        transitionFunction.addTransition(2, 'a', '$', 0, "X$");
+        ArrayList<Integer> states = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4));
+        ArrayList<Character> inputAlpha = new ArrayList<>(Arrays.asList('a', 'b'));
+        ArrayList<Character> stackAlpha = new ArrayList<>(Arrays.asList('$', 'X'));
+        ArrayList<Integer> finalStates = new ArrayList<>(Arrays.asList(4));
+        TransitionFunction tf = new TransitionFunction();
 
-        transitionFunction.addTransition(0, 'a', 'X', 1, "X");
-        transitionFunction.addTransition(1, 'a', 'X', 2, "X");
-        transitionFunction.addTransition(2, 'a', 'X', 0, "XX");
+        // State 0: Count a's in groups of three, pushing one X for each group
+        // First a in a group
+        tf.addTransition(0, 'a', '$', 1, "$");   // First a with empty stack
+        tf.addTransition(0, 'a', 'X', 1, "X");   // First a with X on stack
 
-        // State 0: Transition to state 3 on reading 'b'
-        transitionFunction.addTransition(0, 'b', 'X', 3, "");
+        // Second a in a group
+        tf.addTransition(1, 'a', '$', 2, "$");   // Second a with empty stack
+        tf.addTransition(1, 'a', 'X', 2, "X");   // Second a with X on stack
 
-        // State 3: Pop 'X' for every 2 'b's read
-        transitionFunction.addTransition(3, 'b', 'X', 3, "X");
-        transitionFunction.addTransition(3, 'b', 'X', 3, "");
+        // Third a in a group - push X onto stack to mark completion of a group of 3 a's
+        tf.addTransition(2, 'a', '$', 0, "X$");  // Third a with empty stack, push X
+        tf.addTransition(2, 'a', 'X', 0, "XX");  // Third a with X on stack, push X
 
-        // Transition to state 4 when stack is empty (except for '$')
-        transitionFunction.addTransition(3, 'ε', '$', 4, "$");
+        // Transition to state 3 to process b's if there's at least one X on stack
+        tf.addTransition(0, 'b', 'X', 3, "X");   // Start processing b's
 
-        pda = new PDAClass(states, inputAlphabet, stackAlphabet, transitionFunction, startState, finalStates, stackInitial);
+        // State 3: Process b's, popping X for every two b's
+        tf.addTransition(3, 'b', 'X', 0, "");    // Second b, pop X
+
+        // Accept when the stack is back to just $ (meaning we've matched all a's with b's)
+        tf.addTransition(0, 'e', '$', 4, "$");   // Accept if stack has only $
+
+        PDAClass pda = new PDAClass(states, inputAlpha, stackAlpha, tf, 0, finalStates, '$');
         pda.solveProblem(br, bw);
     }
 }
 
+// Problem 3: Balanced brackets
+class PDAProblem3 {
+    public PDAProblem3(BufferedReader br, BufferedWriter bw) throws IOException {
+        ArrayList<Integer> states = new ArrayList<>(Arrays.asList(0, 1));
+        ArrayList<Character> inputAlpha = new ArrayList<>(Arrays.asList('{', '}', ' '));
+        ArrayList<Character> stackAlpha = new ArrayList<>(Arrays.asList('$', '{'));
+        ArrayList<Integer> finalStates = new ArrayList<>(Arrays.asList(1));
+        TransitionFunction tf = new TransitionFunction();
+
+        // Push { onto stack when encountered
+        tf.addTransition(0, '{', '$', 0, "{$");  // First open bracket with empty stack
+        tf.addTransition(0, '{', '{', 0, "{{");  // Push { onto stack
+
+        // Pop from stack when matching } is encountered
+        tf.addTransition(0, '}', '{', 0, "");    // Pop { when matching } is found
+
+        // Handle spaces - just remain in the same state
+        tf.addTransition(0, ' ', '$', 0, "$");   // Space with empty stack
+        tf.addTransition(0, ' ', '{', 0, "{");   // Space with { on stack
+
+        // Accept when stack has only $ (all brackets matched) and all input is consumed
+        tf.addTransition(0, 'e', '$', 1, "$");   // Accept when stack is empty except for $
+
+        PDAClass pda = new PDAClass(states, inputAlpha, stackAlpha, tf, 0, finalStates, '$');
+        pda.solveProblem(br, bw);
+    }
+}
+
+// Problem 4: {a^n b^{n+m} c^m | n,m >= 1}
+class PDAProblem4 {
+    public PDAProblem4(BufferedReader br, BufferedWriter bw) throws IOException {
+        ArrayList<Integer> states = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4));
+        ArrayList<Character> inputAlpha = new ArrayList<>(Arrays.asList('a', 'b', 'c'));
+        ArrayList<Character> stackAlpha = new ArrayList<>(Arrays.asList('$', 'A', 'B'));
+        ArrayList<Integer> finalStates = new ArrayList<>(Arrays.asList(4));
+        TransitionFunction tf = new TransitionFunction();
+
+        tf.addTransition(0, 'a', '$', 0, "A$");
+        tf.addTransition(0, 'a', 'A', 0, "AA");
+        tf.addTransition(0, 'e', 'A', 1, "A");
+        tf.addTransition(1, 'b', 'A', 1, "");
+        tf.addTransition(1, 'e', '$', 2, "$");
+        tf.addTransition(2, 'b', '$', 2, "B$");
+        tf.addTransition(2, 'b', 'B', 2, "BB");
+        tf.addTransition(2, 'e', 'B', 3, "B");
+        tf.addTransition(3, 'c', 'B', 3, "");
+        tf.addTransition(3, 'e', '$', 4, "$");
+
+        PDAClass pda = new PDAClass(states, inputAlpha, stackAlpha, tf, 0, finalStates, '$');
+        pda.solveProblem(br, bw);
+    }
+}
+
+// Problem 5: {Wc^k | W ∈ {a,b}*, k = number of b's in W}
+class PDAProblem5 {
+    public PDAProblem5(BufferedReader br, BufferedWriter bw) throws IOException {
+        ArrayList<Integer> states = new ArrayList<>(Arrays.asList(0, 1, 2));
+        ArrayList<Character> inputAlpha = new ArrayList<>(Arrays.asList('a', 'b', 'c'));
+        ArrayList<Character> stackAlpha = new ArrayList<>(Arrays.asList('$', 'B'));
+        ArrayList<Integer> finalStates = new ArrayList<>(Arrays.asList(2));
+        TransitionFunction tf = new TransitionFunction();
+
+        tf.addTransition(0, 'a', '$', 0, "$");
+        tf.addTransition(0, 'a', 'B', 0, "B");
+        tf.addTransition(0, 'b', '$', 0, "B$");
+        tf.addTransition(0, 'b', 'B', 0, "BB");
+        tf.addTransition(0, 'c', 'B', 1, "");
+        tf.addTransition(1, 'c', 'B', 1, "");
+        tf.addTransition(0, 'e', '$', 2, "$");
+        tf.addTransition(1, 'e', '$', 2, "$");
+
+        PDAClass pda = new PDAClass(states, inputAlpha, stackAlpha, tf, 0, finalStates, '$');
+        pda.solveProblem(br, bw);
+    }
+}

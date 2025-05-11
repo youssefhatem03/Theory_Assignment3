@@ -1,12 +1,12 @@
 1
-accepted
+aabb
 accepted
 not accepted
 not accepted
 accepted
 x
 2
-accepted
+bbabbaabb
 not accepted
 not accepted
 accepted
@@ -14,7 +14,7 @@ accepted
 accepted
 x
 3
-not accepted
+aabbaa
 accepted
 not accepted
 not accepted
@@ -23,14 +23,14 @@ accepted
 not accepted
 x
 4
-accepted
+aaaaab
 accepted
 not accepted
 not accepted
 accepted
 x
 5
-accepted
+aa
 not accepted
 not accepted
 not accepted
