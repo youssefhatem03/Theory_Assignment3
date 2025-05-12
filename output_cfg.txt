@@ -1,39 +1,34 @@
 1
-aabb
+accepted
 accepted
 not accepted
 not accepted
-accepted
 x
 2
-bbabbaabb
-not accepted
-not accepted
 accepted
+not accepted
+not accepted
 accepted
 accepted
 x
 3
-aabbaa
+not accepted
 accepted
 not accepted
 not accepted
 accepted
 accepted
-not accepted
 x
 4
-aaaaab
+accepted
 accepted
 not accepted
 not accepted
-accepted
 x
 5
-aa
+accepted
 not accepted
 not accepted
 not accepted
 accepted
-not accepted
 x

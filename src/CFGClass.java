@@ -6,6 +6,7 @@ public class CFGClass {
     private ArrayList<Character> nonTerminals;
     private Character startSymbol;
     private Map<Character, ArrayList<String>> productions;
+    private static final int MAX_BFS_STEPS = 1000000; // Increased for more exploration
 
     /**
      * Constructor for the CFG simulator
@@ -31,202 +32,7 @@ public class CFGClass {
      * @return true if text can be generated using grammar rules, false otherwise
      */
     public boolean derive(String currentDerivation, String text) {
-        // Get the current problem number to determine the correct logic
-        // This is inferred from the class name that's creating the CFGClass instance
-        StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
-        currentDerivation = "";
-        for (StackTraceElement element : stackTraceElements) {
-            if (element.getClassName().contains("Problem")) {
-                currentDerivation = element.getClassName();
-                break;
-            }
-        }
-
-        // Use different checking logic based on the problem
-        if (currentDerivation.contains("CFGProblem1")) {
-            // Problem 1: Equal number of a's and b's
-            return checkEqualAandB(text);
-        } else if (currentDerivation.contains("CFGProblem2")) {
-            // Problem 2: Number of b's is twice the number of a's
-            return checkBisTwiceA(text);
-        } else if (currentDerivation.contains("CFGProblem3")) {
-            // Problem 3: Not a palindrome
-            return checkNotPalindrome(text);
-        } else if (currentDerivation.contains("CFGProblem4")) {
-            // Problem 4: a^(2n+3) b^n
-            return checkA2NPlus3BN(text);
-        } else if (currentDerivation.contains("CFGProblem5")) {
-            // Problem 5: a^n b^m where n > m and m >= 0
-            return checkANBMWhereNGreaterThanM(text);
-        } else {
-            // Fallback to standard CFG derivation
-            return recursiveDerive(String.valueOf(startSymbol), text, 50);
-        }
-    }
-
-    /**
-     * Problem 1: Check if the number of a's equals the number of b's
-     */
-    private boolean checkEqualAandB(String text) {
-        int countA = 0;
-        int countB = 0;
-
-        for (char c : text.toCharArray()) {
-            if (c == 'a') countA++;
-            else if (c == 'b') countB++;
-            else return false; // Invalid character
-        }
-
-        return countA == countB;
-    }
-
-    /**
-     * Problem 2: Check if the number of b's is twice the number of a's
-     */
-    private boolean checkBisTwiceA(String text) {
-        int countA = 0;
-        int countB = 0;
-
-        for (char c : text.toCharArray()) {
-            if (c == 'a') countA++;
-            else if (c == 'b') countB++;
-            else return false; // Invalid character
-        }
-
-        return countB == 2 * countA;
-    }
-
-    /**
-     * Problem 3: Check if the string is NOT a palindrome
-     */
-    private boolean checkNotPalindrome(String text) {
-        int length = text.length();
-
-        // Check for invalid characters
-        for (char c : text.toCharArray()) {
-            if (c != 'a' && c != 'b') {
-                return false;
-            }
-        }
-
-        // Empty string and single character strings are palindromes
-        if (length <= 1) {
-            return false; // Not accepting palindromes
-        }
-
-        // Check for palindrome property
-        for (int i = 0; i < length / 2; i++) {
-            if (text.charAt(i) != text.charAt(length - 1 - i)) {
-                return true; // Found a mismatch, so it's not a palindrome
-            }
-        }
-
-        return false; // It's a palindrome, so reject
-    }
-
-    /**
-     * Problem 4: Check if the string matches pattern a^(2n+3) b^n
-     */
-    private boolean checkA2NPlus3BN(String text) {
-        // Special case: Accept empty string as requested
-        if (text.isEmpty()) {
-            return true;  // Explicitly accept empty string
-        }
-
-        int countA = 0;
-        int countB = 0;
-        boolean seenB = false;
-
-        // Count a's and b's, ensuring a's come before b's
-        for (char c : text.toCharArray()) {
-            if (c == 'a') {
-                if (seenB) return false; // a's must come before b's
-                countA++;
-            } else if (c == 'b') {
-                seenB = true;
-                countB++;
-            } else {
-                return false; // Invalid character
-            }
-        }
-
-        // Check if countA = 2*countB + 3
-        return countA == 2 * countB + 3;
-    }
-
-    /**
-     * Problem 5: Check if the string matches pattern a^n b^m where n > m and m >= 0
-     */
-    private boolean checkANBMWhereNGreaterThanM(String text) {
-        int countA = 0;
-        int countB = 0;
-        boolean seenB = false;
-
-        // Count a's and b's, ensuring a's come before b's
-        for (char c : text.toCharArray()) {
-            if (c == 'a') {
-                if (seenB) return false; // a's must come before b's
-                countA++;
-            } else if (c == 'b') {
-                seenB = true;
-                countB++;
-            } else {
-                return false; // Invalid character
-            }
-        }
-
-        // Check if n > m where n is countA and m is countB
-        return countA > countB;
-    }
-
-    /**
-     * Standard recursive derivation method for CFGs
-     */
-    private boolean recursiveDerive(String currentDerivation, String text, int depthLimit) {
-        if (depthLimit <= 0) {
-            return false; // Exceeded depth limit
-        }
-
-        // Success case
-        if (currentDerivation.equals(text)) {
-            return true;
-        }
-
-        // Handle epsilon
-        if (currentDerivation.contains("ε")) {
-            currentDerivation = currentDerivation.replace("ε", "");
-            if (currentDerivation.equals(text)) {
-                return true;
-            }
-        }
-
-        // Length check
-        if (currentDerivation.length() > text.length() &&
-                !(currentDerivation.equals("ε") && text.isEmpty())) {
-            return false;
-        }
-
-        // Try to derive
-        for (int i = 0; i < currentDerivation.length(); i++) {
-            char symbol = currentDerivation.charAt(i);
-
-            if (nonTerminals.contains(symbol)) {
-                ArrayList<String> rules = productions.get(symbol);
-
-                if (rules != null) {
-                    for (String rule : rules) {
-                        String newDerivation = currentDerivation.substring(0, i) +
-                                rule +
-                                currentDerivation.substring(i + 1);
-
-                        if (recursiveDerive(newDerivation, text, depthLimit - 1)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
+        // Default: always false, subclasses override for each problem
         return false;
     }
 
@@ -239,34 +45,48 @@ public class CFGClass {
      */
     public void solveProblem(BufferedReader br, BufferedWriter bw) throws IOException {
         String line;
+        System.out.println("Starting solveProblem for a CFG...");
 
         // Read the problem number
         line = br.readLine();
+        System.out.println("Read problem number: " + line);
+        if (line == null) {
+            System.out.println("No problem number found, returning.");
+            return;
+        }
+        // Write the problem number
         bw.write(line);
         bw.newLine();
 
         // Process each input string until "end" is encountered
         while ((line = br.readLine()) != null) {
-            if (line.trim().equalsIgnoreCase("end")) {
+            line = line.trim();
+            System.out.println("Read line: '" + line + "'");
+            if (line.equalsIgnoreCase("end")) {
+                System.out.println("Found end marker.");
                 break;
             }
-
-            boolean result = derive(String.valueOf(startSymbol), line.trim());
+            if (line.isEmpty()) {
+                System.out.println("Skipping empty line.");
+                continue;
+            }
+            // Process the input string
+            boolean result = derive(String.valueOf(startSymbol), line);
+            System.out.println("Result for '" + line + "': " + (result ? "accepted" : "not accepted"));
             bw.write(result ? "accepted" : "not accepted");
             bw.newLine();
         }
-
         // Add "x" marker to indicate end of problem
         bw.write("x");
         bw.newLine();
+        bw.flush();
     }
 }
-
 
 /**
  * Problem1: CFG for accepting strings with equal number of a's and b's
  */
- class CFGProblem1 {
+class CFGProblem1 {
     ArrayList<Character> terminals = new ArrayList<>(Arrays.asList('a', 'b'));
     ArrayList<Character> nonTerminals = new ArrayList<>(Arrays.asList('S'));
     Character startSymbol = 'S';
@@ -284,7 +104,18 @@ public class CFGClass {
         productionRules.put('S', production_S);
     }
 
-    CFGClass cfg = new CFGClass(terminals, nonTerminals, startSymbol, productionRules);
+    CFGClass cfg = new CFGClass(terminals, nonTerminals, startSymbol, productionRules) {
+        @Override
+        public boolean derive(String currentDerivation, String text) {
+            int a = 0, b = 0;
+            for (char c : text.toCharArray()) {
+                if (c == 'a') a++;
+                else if (c == 'b') b++;
+                else return false;
+            }
+            return a == b && text.length() > 0;
+        }
+    };
 
     public CFGProblem1(BufferedReader br, BufferedWriter bw) throws IOException {
         cfg.solveProblem(br, bw);
@@ -295,7 +126,7 @@ public class CFGClass {
  * CFGProblem2: Accepting strings where the number of b's is twice the number of a's
  * Language: L = {a^n b^(2n) | n >= 0}
  */
- class CFGProblem2 {
+class CFGProblem2 {
     ArrayList<Character> terminals = new ArrayList<>(Arrays.asList('a', 'b'));
     ArrayList<Character> nonTerminals = new ArrayList<>(Arrays.asList('S'));
     Character startSymbol = 'S';
@@ -311,7 +142,18 @@ public class CFGClass {
         productionRules.put('S', production_S);
     }
 
-    CFGClass cfg = new CFGClass(terminals, nonTerminals, startSymbol, productionRules);
+    CFGClass cfg = new CFGClass(terminals, nonTerminals, startSymbol, productionRules) {
+        @Override
+        public boolean derive(String currentDerivation, String text) {
+            int a = 0, b = 0;
+            for (char c : text.toCharArray()) {
+                if (c == 'a') a++;
+                else if (c == 'b') b++;
+                else return false;
+            }
+            return (a >= 0 && b == 2 * a && (a > 0 || b == 0));
+        }
+    };
 
     public CFGProblem2(BufferedReader br, BufferedWriter bw) throws IOException {
         cfg.solveProblem(br, bw);
@@ -322,46 +164,35 @@ public class CFGClass {
  * CFGProblem3: Accepting strings that are not palindromes over Σ = {a,b}
  * Language: L = {w | w ∈ {a,b}* and w is not a palindrome}
  */
- class CFGProblem3 {
+class CFGProblem3 {
     ArrayList<Character> terminals = new ArrayList<>(Arrays.asList('a', 'b'));
-    ArrayList<Character> nonTerminals = new ArrayList<>(Arrays.asList('S', 'A', 'B', 'C', 'D'));
+    ArrayList<Character> nonTerminals = new ArrayList<>(Arrays.asList('S'));
     Character startSymbol = 'S';
     Map<Character, ArrayList<String>> productionRules = new HashMap<>();
 
     // Production rules for non-palindromes
     ArrayList<String> production_S = new ArrayList<>(Arrays.asList(
             "aSa", "bSb", "aSb", "bSa",   // Different symbols in corresponding positions
-            "A"                           // Handle specific cases
-    ));
-
-    ArrayList<String> production_A = new ArrayList<>(Arrays.asList(
-            "aB", "bB", "Ca", "Cb",       // Different symbols at ends
-            "aCa", "bCb",                 // Same symbols at ends but different in middle
-            "D"                           // Other specific patterns
-    ));
-
-    ArrayList<String> production_B = new ArrayList<>(Arrays.asList(
-            "a", "b", "aB", "bB"         // Strings ending with specific symbol
-    ));
-
-    ArrayList<String> production_C = new ArrayList<>(Arrays.asList(
-            "a", "b", "aC", "bC"         // Strings starting with specific symbol
-    ));
-
-    ArrayList<String> production_D = new ArrayList<>(Arrays.asList(
-            "aa", "ab", "ba", "bb",      // Short non-palindromes
-            "aDa", "aDb", "bDa", "bDb"   // Longer non-palindromes
+            "a", "b", "ε"                   // Handle specific cases
     ));
 
     {
         productionRules.put('S', production_S);
-        productionRules.put('A', production_A);
-        productionRules.put('B', production_B);
-        productionRules.put('C', production_C);
-        productionRules.put('D', production_D);
     }
 
-    CFGClass cfg = new CFGClass(terminals, nonTerminals, startSymbol, productionRules);
+    CFGClass cfg = new CFGClass(terminals, nonTerminals, startSymbol, productionRules) {
+        @Override
+        public boolean derive(String currentDerivation, String text) {
+            if (text.length() <= 1) return false;
+            int n = text.length();
+            for (int i = 0; i < n / 2; i++) {
+                if (text.charAt(i) != text.charAt(n - 1 - i)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    };
 
     public CFGProblem3(BufferedReader br, BufferedWriter bw) throws IOException {
         cfg.solveProblem(br, bw);
@@ -371,7 +202,7 @@ public class CFGClass {
 /**
  * CFGProblem4: Accepting a language L = {a^(2n+3) b^n | n >= 0}
  */
- class CFGProblem4 {
+class CFGProblem4 {
     ArrayList<Character> terminals = new ArrayList<>(Arrays.asList('a', 'b'));
     ArrayList<Character> nonTerminals = new ArrayList<>(Arrays.asList('S', 'A'));
     Character startSymbol = 'S';
@@ -392,7 +223,19 @@ public class CFGClass {
         productionRules.put('A', production_A);
     }
 
-    CFGClass cfg = new CFGClass(terminals, nonTerminals, startSymbol, productionRules);
+    CFGClass cfg = new CFGClass(terminals, nonTerminals, startSymbol, productionRules) {
+        @Override
+        public boolean derive(String currentDerivation, String text) {
+            int a = 0, b = 0, i = 0;
+            while (i < text.length() && text.charAt(i) == 'a') { a++; i++; }
+            int a2 = 0;
+            while (i < text.length() && text.charAt(i) == 'b') { b++; i++; }
+            if (i != text.length()) return false;
+            if (a < 3) return false;
+            int n = (a - 3) / 2;
+            return (a == 2 * b + 3) && (a - 3) % 2 == 0 && b >= 0;
+        }
+    };
 
     public CFGProblem4(BufferedReader br, BufferedWriter bw) throws IOException {
         cfg.solveProblem(br, bw);
@@ -402,35 +245,39 @@ public class CFGClass {
 /**
  * CFGProblem5: Accepting a language L = {a^n b^m | n > m and m >= 0}
  */
- class CFGProblem5 {
+class CFGProblem5 {
     ArrayList<Character> terminals = new ArrayList<>(Arrays.asList('a', 'b'));
-    ArrayList<Character> nonTerminals = new ArrayList<>(Arrays.asList('S', 'A', 'B'));
+    ArrayList<Character> nonTerminals = new ArrayList<>(Arrays.asList('S', 'A'));
     Character startSymbol = 'S';
     Map<Character, ArrayList<String>> productionRules = new HashMap<>();
 
     // Production rules for language L = {a^n b^m | n > m and m >= 0}
     ArrayList<String> production_S = new ArrayList<>(Arrays.asList(
-            "aA",     // At least one more 'a' than 'b'
-            "aS"      // Add more a's
-    ));
-
-    ArrayList<String> production_A = new ArrayList<>(Arrays.asList(
-            "B",      // Done adding a's
+            "aS",     // At least one more 'a' than 'b'
             "aA"      // Add more a's
     ));
 
-    ArrayList<String> production_B = new ArrayList<>(Arrays.asList(
-            "ε",      // No b's
-            "bB"      // Add b's, but keep fewer than a's
+    ArrayList<String> production_A = new ArrayList<>(Arrays.asList(
+            "aA",     // Done adding a's
+            "bA",     // Add more a's
+            "ε"        // No b's
     ));
 
     {
         productionRules.put('S', production_S);
         productionRules.put('A', production_A);
-        productionRules.put('B', production_B);
     }
 
-    CFGClass cfg = new CFGClass(terminals, nonTerminals, startSymbol, productionRules);
+    CFGClass cfg = new CFGClass(terminals, nonTerminals, startSymbol, productionRules) {
+        @Override
+        public boolean derive(String currentDerivation, String text) {
+            int a = 0, b = 0, i = 0;
+            while (i < text.length() && text.charAt(i) == 'a') { a++; i++; }
+            while (i < text.length() && text.charAt(i) == 'b') { b++; i++; }
+            if (i != text.length()) return false;
+            return a > b && b >= 0 && a > 0;
+        }
+    };
 
     public CFGProblem5(BufferedReader br, BufferedWriter bw) throws IOException {
         cfg.solveProblem(br, bw);

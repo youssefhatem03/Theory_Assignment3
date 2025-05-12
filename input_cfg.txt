@@ -3,7 +3,6 @@ aabb
 aaabbb
 aab
 aabbb
-
 end
 2
 bbabbaabb
@@ -11,7 +10,6 @@ aaaabbbbbb
 abbb
 bbbaba
 abb
-
 end
 3
 aabbaa
@@ -20,14 +18,12 @@ a
 aba
 abbab
 abbaba
-
 end
 4
 aaaaab
 aaaaaaabb
 aaaabbb
 baaaaa
-
 end
 5
 aa
@@ -35,5 +31,4 @@ aabb
 abbb
 aaaaaba
 aab
-
 end
