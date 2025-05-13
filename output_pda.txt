@@ -1,28 +1,28 @@
-not accepted
+1
 accepted
 accepted
 not accepted
 not accepted
 x
-not accepted
+2
 accepted
 accepted
 not accepted
 not accepted
 x
-not accepted
+3
 accepted
 accepted
 not accepted
 not accepted
 x
-not accepted
+4
 accepted
 accepted
 not accepted
 not accepted
 x
-not accepted
+5
 accepted
 accepted
 not accepted
